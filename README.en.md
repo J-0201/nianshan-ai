@@ -161,8 +161,8 @@ nianshan-ai/
 ├── patches/                 Required upstream changes (as patches — no upstream code vendored)
 ├── tools/                   Development-time verification scripts
 └── docs/
-    ├── 音色转换方案.md        Deployment, pitfalls, VRAM and quality measurements (Chinese)
-    └── 乐谱歌声合成方案.md     Duration limits, chunk stitching, key findings, architecture (Chinese)
+    ├── 音色转换技术说明.md     Engine internals, parameters, VRAM/quality measurements, FAQ (Chinese)
+    └── 乐谱歌声合成技术说明.md Duration limits, chunk stitching, key findings, architecture (Chinese)
 ```
 
 **This repository contains neither upstream code nor model weights** — both are fetched from their original sources by `install.ps1`.
