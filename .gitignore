@@ -1,0 +1,45 @@
+# ---- 上游项目与第三方资源（不随本仓库分发，由 install.ps1 拉取）----
+seed-vc/
+YingMusic-Singer/
+tools/ffmpeg/
+demo_audio/
+
+# ---- 模型权重（体积大且有各自的许可证，不要提交）----
+checkpoints/
+ckpts/
+*.pth
+*.pt
+*.ckpt
+*.bin
+*.safetensors
+*.index
+
+# ---- 运行期产物 ----
+work/
+out/
+gradio_tmp/
+tools/results/
+tools/*_test/
+*.log
+
+# ---- 音频素材（不要提交受版权保护的音频）----
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.ogg
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+jieba.cache
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
