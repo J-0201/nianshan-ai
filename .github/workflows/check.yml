@@ -1,0 +1,139 @@
+name: 检查
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------
+  python-syntax:
+    name: Python 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 解析所有 Python 文件
+        run: |
+          python - <<'PY'
+          import ast, pathlib, sys
+
+          SKIP_PARTS = {'.venv', 'venv', '__pycache__', 'seed-vc', 'YingMusic-Singer'}
+          files = [p for p in sorted(pathlib.Path('.').rglob('*.py'))
+                   if not SKIP_PARTS & set(p.parts)]
+
+          bad = 0
+          for f in files:
+              try:
+                  ast.parse(f.read_text(encoding='utf-8'))
+                  print(f'  OK    {f}')
+              except SyntaxError as e:
+                  print(f'  FAIL  {f}:{e.lineno}: {e.msg}')
+                  bad += 1
+
+          print(f'\n共检查 {len(files)} 个文件，失败 {bad} 个')
+          sys.exit(1 if bad else 0)
+          PY
+
+  # ------------------------------------------------------------------
+  powershell-syntax:
+    name: PowerShell 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析 PowerShell 脚本
+        shell: pwsh
+        run: |
+          $bad = 0
+          $files = Get-ChildItem -Recurse -Include *.ps1 -File
+          foreach ($f in $files) {
+            $err = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $f.FullName, [ref]$null, [ref]$err) | Out-Null
+            if ($err -and $err.Count) {
+              Write-Host "  FAIL  $($f.Name): $($err[0].Message)"
+              $bad++
+            } else {
+              Write-Host "  OK    $($f.Name)"
+            }
+          }
+          Write-Host "`n共检查 $($files.Count) 个文件，失败 $bad 个"
+          if ($bad) { exit 1 }
+
+  # ------------------------------------------------------------------
+  repo-hygiene:
+    name: 仓库卫生检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 确认未提交权重/音频等大文件
+        run: |
+          echo "检查是否误提交了权重或音频文件..."
+          if git ls-files | grep -Ei '\.(pth|pt|ckpt|bin|safetensors|index|wav|mp3|flac|m4a|ogg)$'; then
+            echo "::error::仓库中不应包含模型权重或音频文件"
+            exit 1
+          fi
+          echo "OK：无权重/音频文件"
+
+      - name: 确认无硬编码绝对路径
+        run: |
+          echo "检查是否残留开发者本机绝对路径..."
+          # 盘符形式（C:\ 或 D:/），但排除 URL 里的 "p:/" 这类误报
+          hits=$(git grep -n -I -E '(^|[^A-Za-z])[A-Za-z]:[\\/]' -- '*.py' '*.ps1' '*.bat' \
+                 | grep -viE 'https?://|127\.0\.0\.1' || true)
+          if [ -n "$hits" ]; then
+            echo "::warning::发现疑似绝对路径，请确认是否应改为可配置"
+            echo "$hits"
+          else
+            echo "OK：未发现绝对路径"
+          fi
+
+      - name: 大文件体积检查（单文件 > 5 MB）
+        run: |
+          big=$(git ls-files -z | xargs -0 -I{} sh -c 'test -f "{}" && s=$(stat -c%s "{}") && [ "$s" -gt 5242880 ] && echo "{} ($((s/1024/1024)) MB)"')
+          if [ -n "$big" ]; then
+            echo "::error::存在超过 5 MB 的文件："
+            echo "$big"
+            exit 1
+          fi
+          echo "OK：无超大文件"
+
+  # ------------------------------------------------------------------
+  # 上游补丁可用性：验证补丁仍能干净应用到固定提交号。
+  # 需要联网克隆上游，故允许失败而不阻塞（上游变更时会提示）。
+  patch-check:
+    name: 上游补丁可用性
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 验证 seed-vc 补丁
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/Plachtaa/seed-vc.git /tmp/seed-vc
+          cd /tmp/seed-vc
+          git fetch --depth 1 origin 51383efd921027683c89e5348211d93ff12ac2a8
+          git checkout -q FETCH_HEAD
+          git apply --check "$GITHUB_WORKSPACE/patches/seed-vc-local.patch"
+          echo "OK：seed-vc 补丁可干净应用"
+
+      - name: 验证 YingMusic 补丁
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/GiantAILab/YingMusic-Singer.git /tmp/svs
+          cd /tmp/svs
+          git fetch --depth 1 origin 6d7c453781cdaf286227ba7a51e79d57b19fad71
+          git checkout -q FETCH_HEAD
+          git apply --check "$GITHUB_WORKSPACE/patches/yingmusic-local.patch"
+          echo "OK：YingMusic 补丁可干净应用"

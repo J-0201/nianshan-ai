@@ -26,7 +26,7 @@
 
 .EXAMPLE
     .\install.ps1
-    .\install.ps1 -Workspace D:\ai -SkipWeights
+    .\install.ps1 -Workspace "$env:USERPROFILE\ai" -SkipWeights
 #>
 [CmdletBinding()]
 param(
@@ -163,6 +163,31 @@ foreach ($f in 'long_song.py', 'svs_runner.py', 'verify_melody.py') {
 }
 Copy-Item (Join-Path $RepoRoot "启动念山AI.bat") $Workspace -Force
 Copy-Item (Join-Path $RepoRoot "停止念山AI.bat") $Workspace -Force
+
+# 示例音频目录：放进去的音频会自动出现在界面「示例」区
+$demoDir = Join-Path $Workspace "demo_audio"
+New-Item -ItemType Directory -Path $demoDir -Force | Out-Null
+$demoReadme = Join-Path $demoDir "说明.txt"
+if (-not (Test-Path $demoReadme)) {
+    $txt = @"
+念山AI 示例音频目录
+====================
+
+把音频放到这个目录，界面「示例（点击一键填充）」区就会自动出现对应条目。
+文件名需与下表一致；不需要示例可以留空，不影响使用。
+
+音色转换页的示例：
+  test_source_short.wav   源音频示例（要转换的歌声/人声）
+  song_demo.mp3           源音频示例（完整歌曲，用于演示「完整歌曲」模式）
+  test_ref.wav            参考音频示例（目标音色，1~30 秒干净人声）
+
+乐谱唱歌页的示例来自上游 YingMusic-Singer 自带素材，无需在此放置。
+
+注意：请使用你有权使用的音频。声音权益受《民法典》第 1023 条保护。
+"@
+    [System.IO.File]::WriteAllText($demoReadme, $txt, [System.Text.UTF8Encoding]::new($true))
+    Say "  已创建示例音频目录（附说明）: $demoDir" DarkGray
+}
 Say "  应用文件已就位（bat 启动器已放到 $Workspace）" DarkGray
 
 # ------------------------------------------------------------ 5. 两个 Python 环境
