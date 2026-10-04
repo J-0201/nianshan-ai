@@ -100,13 +100,39 @@ jobs:
 
       - name: 大文件体积检查（单文件 > 5 MB）
         run: |
-          big=$(git ls-files -z | xargs -0 -I{} sh -c 'test -f "{}" && s=$(stat -c%s "{}") && [ "$s" -gt 5242880 ] && echo "{} ($((s/1024/1024)) MB)"')
+          big=""
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            s=$(stat -c%s "$f")
+            if [ "$s" -gt 5242880 ]; then
+              big="${big}${f} ($((s/1024/1024)) MB)"$'\n'
+            fi
+          done < <(git ls-files)
           if [ -n "$big" ]; then
             echo "::error::存在超过 5 MB 的文件："
-            echo "$big"
+            printf '%s' "$big"
             exit 1
           fi
           echo "OK：无超大文件"
+
+      - name: 补丁文件必须是 git 可读的纯文本
+        run: |
+          # 防止补丁被 PowerShell 等工具写成 UTF-16（含 NUL 字节），那样 git apply 会失败
+          bad=0
+          for p in patches/*.patch; do
+            if grep -qP '\x00' "$p"; then
+              echo "::error::$p 含 NUL 字节（疑似 UTF-16 编码），git apply 无法读取"
+              bad=1
+              continue
+            fi
+            if ! head -c 20 "$p" | grep -q '^diff --git'; then
+              echo "::error::$p 未以 'diff --git' 开头，格式不对"
+              bad=1
+              continue
+            fi
+            echo "OK：$p（$(wc -c < "$p") 字节）"
+          done
+          exit $bad
 
   # ------------------------------------------------------------------
   # 上游补丁可用性：验证补丁仍能干净应用到固定提交号。
