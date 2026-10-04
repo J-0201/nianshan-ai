@@ -15,9 +15,9 @@ jobs:
     name: Python 语法检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -48,7 +48,7 @@ jobs:
     name: PowerShell 语法检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 解析 PowerShell 脚本
         shell: pwsh
@@ -74,7 +74,7 @@ jobs:
     name: 仓库卫生检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 确认未提交权重/音频等大文件
         run: |
@@ -142,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 验证 seed-vc 补丁
         run: |
